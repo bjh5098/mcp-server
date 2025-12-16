@@ -144,3 +144,6 @@ build/
 
 # Cursor IDE files
 .cursor/
+
+# Smithery build output
+.smithery/
