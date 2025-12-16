@@ -6,7 +6,8 @@ import { InferenceClient } from '@huggingface/inference'
 export const configSchema = z.object({
     hfToken: z
         .string()
-        .describe('Hugging Face API Token for image generation')
+        .optional()
+        .describe('Hugging Face API Token for image generation (required for generate-image tool)')
 })
 
 // Type for configuration
@@ -14,58 +15,58 @@ type Config = z.infer<typeof configSchema>
 
 // Required: Export default createServer function for Smithery
 export default function createServer({ config }: { config: Config }) {
-    const server = new McpServer({
-        name: 'typescript-mcp-server',
-        version: '1.0.0'
-    })
+const server = new McpServer({
+    name: 'typescript-mcp-server',
+    version: '1.0.0'
+})
 
-    server.registerTool(
-        'greet',
-        {
-            description: '이름과 언어를 입력하면 인사말을 반환합니다.',
-            inputSchema: z.object({
-                name: z.string().describe('인사할 사람의 이름'),
-                language: z
-                    .enum(['ko', 'en'])
-                    .optional()
-                    .default('en')
-                    .describe('인사 언어 (기본값: en)')
-            }),
-            outputSchema: z.object({
-                content: z
-                    .array(
-                        z.object({
-                            type: z.literal('text'),
-                            text: z.string().describe('인사말')
-                        })
-                    )
-                    .describe('인사말')
-            })
-        },
-        async ({ name, language }) => {
-            const greeting =
-                language === 'ko'
-                    ? `안녕하세요, ${name}님!`
-                    : `Hey there, ${name}! 👋 Nice to meet you!`
+server.registerTool(
+    'greet',
+    {
+        description: '이름과 언어를 입력하면 인사말을 반환합니다.',
+        inputSchema: z.object({
+            name: z.string().describe('인사할 사람의 이름'),
+            language: z
+                .enum(['ko', 'en'])
+                .optional()
+                .default('en')
+                .describe('인사 언어 (기본값: en)')
+        }),
+        outputSchema: z.object({
+            content: z
+                .array(
+                    z.object({
+                        type: z.literal('text'),
+                        text: z.string().describe('인사말')
+                    })
+                )
+                .describe('인사말')
+        })
+    },
+    async ({ name, language }) => {
+        const greeting =
+            language === 'ko'
+                ? `안녕하세요, ${name}님!`
+                : `Hey there, ${name}! 👋 Nice to meet you!`
 
-            return {
+        return {
+            content: [
+                {
+                    type: 'text' as const,
+                    text: greeting
+                }
+            ],
+            structuredContent: {
                 content: [
                     {
                         type: 'text' as const,
                         text: greeting
                     }
-                ],
-                structuredContent: {
-                    content: [
-                        {
-                            type: 'text' as const,
-                            text: greeting
-                        }
-                    ]
-                }
+                ]
             }
         }
-    )
+    }
+)
 
     server.registerTool(
         'calculator',
@@ -432,7 +433,7 @@ export default function createServer({ config }: { config: Config }) {
         async ({ prompt }) => {
             try {
                 // Use HF_TOKEN from config (provided by Smithery)
-                const hfToken = config.hfToken
+                const hfToken = config?.hfToken
                 if (!hfToken) {
                     throw new Error('HF_TOKEN이 설정되지 않았습니다. Smithery 설정에서 hfToken을 입력해주세요.')
                 }
